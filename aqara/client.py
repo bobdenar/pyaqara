@@ -31,12 +31,13 @@ def _extract_data(msg):
 
 class AqaraClient(AqaraProtocol):
     """Aqara Client implementation."""
-    def __init__(self, gw_secrets=None):
+    def __init__(self, gw_secrets=None, interface=None):
         super().__init__()
         self.transport = None
         self._gw_secrets = {} if gw_secrets is None else gw_secrets
         self._gateways = {}
         self._device_to_gw = {}
+        self.interface=interface
 
     @property
     def gateways(self):

@@ -12,6 +12,7 @@ import json
 import logging
 import socket
 import struct
+from sys import platform
 
 from aqara.const import (MCAST_ADDR, MCAST_PORT, GATEWAY_PORT)
 
@@ -22,6 +23,7 @@ class AqaraProtocol(object):
 
     def __init__(self):
         self.transport = None
+        self.interface = None
 
     def connection_made(self, transport):
         """Implementation when connection is made."""
@@ -67,7 +69,13 @@ class AqaraProtocol(object):
         _LOGGER.debug("Joining multicast group...")
         sock = self.transport.get_extra_info("socket")
         group = socket.inet_aton(MCAST_ADDR)
-        mreq = struct.pack("4sL", group, socket.INADDR_ANY)
+        if platform == "win32":
+            if self.interface == None:
+                self.interface=socket.gethostbyname(socket.gethostname())
+                _LOGGER.debug("Interface not defined. Using : " + self.interface)
+            mreq=group+socket.inet_aton(self.interface)
+        else:
+            mreq = struct.pack("4sL", group, socket.INADDR_ANY)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
