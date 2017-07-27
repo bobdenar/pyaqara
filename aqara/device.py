@@ -6,6 +6,7 @@ import logging
 from pydispatch import dispatcher
 from aqara.const import (
     AQARA_DEVICE_HT,
+    AQARA_DEVICE_WEATHERV1,
     AQARA_DEVICE_MOTION,
     AQARA_DEVICE_MAGNET,
     AQARA_DEVICE_SWITCH,
@@ -16,7 +17,8 @@ from aqara.const import (
     AQARA_DATA_VOLTAGE,
     AQARA_DATA_STATUS,
     AQARA_DATA_TEMPERATURE,
-    AQARA_DATA_HUMIDITY
+    AQARA_DATA_HUMIDITY,
+    AQARA_DATA_PRESSURE
 )
 
 HASS_UPDATE_SIGNAL = "update_hass_sensor"
@@ -34,7 +36,9 @@ BUTTON_ACTION_MAP = {
 def create_device(gateway, model, sid):
     """Device factory"""
     if model == AQARA_DEVICE_HT:
-        return AqaraHTSensor(gateway, sid)
+        return AqaraWeatherSensor(gateway, sid, AQARA_DEVICE_HT)
+    if model == AQARA_DEVICE_WEATHERV1:
+        return AqaraWeatherSensor(gateway, sid, AQARA_DEVICE_WEATHERV1)
     elif model == AQARA_DEVICE_MOTION:
         return AqaraMotionSensor(gateway, sid)
     elif model == AQARA_DEVICE_MAGNET:
@@ -127,12 +131,13 @@ class AqaraBaseDevice(object):
         """log"""
         log_func('%s [%s]: %s', self.sid, self.model, msg)
 
-class AqaraHTSensor(AqaraBaseDevice):
-    """AqaraHTSensor"""
-    def __init__(self, gateway, sid):
-        super().__init__(AQARA_DEVICE_HT, gateway, sid)
+class AqaraWeatherSensor(AqaraBaseDevice):
+    """AqaraWeatherSensor"""
+    def __init__(self, gateway, sid, sensorType):
+        super().__init__(sensorType, gateway, sid)
         self._temperature = 0
         self._humidity = 0
+        self._pressure = 0
 
     @property
     def temperature(self):
@@ -144,11 +149,18 @@ class AqaraHTSensor(AqaraBaseDevice):
         """property: humidity (unit: %)"""
         return self._humidity
 
+    @property
+    def pressure(self):
+        """property: pressure (unit: Pa)"""
+        return self._pressure
+
     def do_update(self, data):
         if AQARA_DATA_TEMPERATURE in data:
             self._temperature = self.parse_value(data[AQARA_DATA_TEMPERATURE])
         if AQARA_DATA_HUMIDITY in data:
             self._humidity = self.parse_value(data[AQARA_DATA_HUMIDITY])
+        if AQARA_DATA_PRESSURE in data:
+            self._pressure = int(data[AQARA_DATA_PRESSURE])
 
     def do_heartbeat(self, data):
         # heartbeat for HT sensor contains the same data as report
@@ -158,7 +170,6 @@ class AqaraHTSensor(AqaraBaseDevice):
     def parse_value(str_value):
         """parse sensor_ht values"""
         return round(int(str_value) / 100, 1)
-
 
 class AqaraContactSensor(AqaraBaseDevice):
     """AqaraContactSensor"""
